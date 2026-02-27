@@ -7,17 +7,16 @@
         <link rel="stylesheet" href="styles.css">
         <link rel="icon" type="image/svg+xml" href="Logo.svg">
     </head>
-
     <body>
-
     <div class="container">
         <div class="scene">
             <div id="coin" class="coin">
-                <div class="face front">Cara</div>
-                <div class="face back">Cruz</div>
+                <div class="coin-face coin-front">CARA</div>
+                <div class="coin-face coin-back">CRUZ</div>
             </div>
-
-            <div id="edgeLine" class="edge-line"></div>
+            <div id="edgeOverlay" class="edge-overlay">
+                <div class="edge-bar"></div>
+            </div>
         </div>
 
         <button id="flipBtn">Lanzar KanchCoin</button>
@@ -26,6 +25,5 @@
 
     <script src="scripts.js"></script>
     <audio id="coinSound" src="coin.mp3"></audio>
-    
     </body>
 </html>

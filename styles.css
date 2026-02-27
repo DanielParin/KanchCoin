@@ -1,27 +1,40 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=Cinzel:wght@500&display=swap');
+
 :root {
-    --coin-size: min(60vw, 300px);
+    --coin-size: min(60vw, 280px);
+    --gold-light: #f0d060;
+    --gold-mid:   #d4af37;
+    --gold-dark:  #8b6914;
+    --gold-rim:   #a07820;
 }
 
 body {
     margin: 0;
-    background-color: #151B23;
+    background-color: #0e1318;
+    background-image:
+        radial-gradient(ellipse at 30% 20%, #1a2535 0%, transparent 60%),
+        radial-gradient(ellipse at 70% 80%, #1c1408 0%, transparent 60%);
     display: flex;
     justify-content: center;
     align-items: center;
     height: 100vh;
-    font-family: Arial, sans-serif;
+    font-family: 'Cinzel', serif;
     color: white;
+    overflow: hidden;
 }
 
 .container {
     text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 .scene {
     width: var(--coin-size);
     height: var(--coin-size);
-    perspective: 1200px;
     margin-bottom: 40px;
+    perspective: 800px;
     position: relative;
 }
 
@@ -30,61 +43,126 @@ body {
     height: 100%;
     position: relative;
     transform-style: preserve-3d;
-    transition: transform 5s cubic-bezier(.17,.67,.83,.67);
 }
 
-.face {
+.coin-face {
     position: absolute;
     width: 100%;
     height: 100%;
     border-radius: 50%;
-    background: linear-gradient(145deg, #d4af37, #b8860b);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
     display: flex;
     justify-content: center;
     align-items: center;
-    font-size: calc(var(--coin-size) / 6);
-    font-weight: bold;
-    backface-visibility: hidden;
+    font-family: 'Cinzel Decorative', serif;
+    font-size: calc(var(--coin-size) / 5.5);
+    font-weight: 700;
+    color: var(--gold-dark);
+    text-shadow: 0 1px 2px rgba(255,220,80,0.4);
+    background: radial-gradient(circle at 35% 35%, #f5e070, #d4af37 40%, #a07820 75%, #7a5c10);
+    box-shadow:
+        inset 0 0 0 6px var(--gold-rim),
+        inset 0 0 0 10px #c8a020,
+        inset 0 0 30px rgba(0,0,0,0.3),
+        0 8px 40px rgba(0,0,0,0.7),
+        0 2px 8px rgba(212,175,55,0.3);
 }
 
-.front {
-    transform: rotateY(0deg);
-}
-
-.back {
-    transform: rotateY(180deg);
-}
-
-.edge-line {
+.coin-face::after {
+    content: '';
     position: absolute;
-    width: 6px;
-    height: var(--coin-size);
-    background: linear-gradient(to right, #b8860b, #e0c15a, #b8860b);
-    left: 50%;
+    width: 40%;
+    height: 40%;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,255,200,0.4) 0%, transparent 70%);
+    top: 12%;
+    left: 15%;
+    pointer-events: none;
+}
+
+.coin-front { transform: rotateY(0deg); }
+
+.coin-back  { transform: rotateY(180deg); }
+
+.edge-overlay {
+    position: absolute;
     top: 0;
-    transform: translateX(-50%);
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     opacity: 0;
-    transition: opacity 0.3s ease;
+    z-index: 10;
 }
 
-.coin.canto .edge-line {
-    opacity: 1;
+.edge-bar {
+    width: 9%;
+    height: 100%;
+    border-radius: 50%;
+    background: linear-gradient(to right,
+        #5a4008,
+        #b8860b 25%,
+        #f0d060 50%,
+        #b8860b 75%,
+        #5a4008);
+    box-shadow:
+        0 0 0 2px #a07820,
+        -6px 0 18px rgba(0,0,0,0.7),
+         6px 0 18px rgba(0,0,0,0.7),
+         0   0 30px rgba(212,175,55,0.25);
 }
 
+/* BOTÓN */
 button {
-    padding: 12px 25px;
-    font-size: 18px;
-    border: none;
-    border-radius: 8px;
+    padding: 14px 32px;
+    font-family: 'Cinzel', serif;
+    font-size: 16px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    border: 2px solid var(--gold-mid);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--gold-light);
     cursor: pointer;
+    transition: all 0.25s ease;
+    position: relative;
+    overflow: hidden;
+    text-transform: uppercase;
 }
-
+button::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(212,175,55,0.15), transparent);
+    opacity: 0;
+    transition: opacity 0.25s;
+}
+button:hover:not(:disabled)::before { opacity: 1; }
+button:hover:not(:disabled) {
+    box-shadow: 0 0 20px rgba(212,175,55,0.3);
+    color: #fff;
+}
+button:active:not(:disabled) { transform: scale(0.97); }
 button:disabled {
-    background: gray;
+    border-color: #444;
+    color: #555;
     cursor: not-allowed;
 }
 
+/* RESULTADO */
 #result {
-    margin-top: 25px;
-    font-size: 28px;
+    margin-top: 28px;
+    font-family: 'Cinzel Decorative', serif;
+    font-size: clamp(20px, 5vw, 32px);
+    letter-spacing: 0.12em;
+    color: var(--gold-light);
+    text-shadow: 0 0 20px rgba(212,175,55,0.5);
+    min-height: 1.4em;
+    opacity: 0;
+    transition: opacity 0.6s ease;
 }
+#result.visible { opacity: 1; }
