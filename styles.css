@@ -1,0 +1,90 @@
+:root {
+    --coin-size: min(60vw, 300px);
+}
+
+body {
+    margin: 0;
+    background-color: #151B23;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    font-family: Arial, sans-serif;
+    color: white;
+}
+
+.container {
+    text-align: center;
+}
+
+.scene {
+    width: var(--coin-size);
+    height: var(--coin-size);
+    perspective: 1200px;
+    margin-bottom: 40px;
+    position: relative;
+}
+
+.coin {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform 5s cubic-bezier(.17,.67,.83,.67);
+}
+
+.face {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: linear-gradient(145deg, #d4af37, #b8860b);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: calc(var(--coin-size) / 6);
+    font-weight: bold;
+    backface-visibility: hidden;
+}
+
+.front {
+    transform: rotateY(0deg);
+}
+
+.back {
+    transform: rotateY(180deg);
+}
+
+.edge-line {
+    position: absolute;
+    width: 6px;
+    height: var(--coin-size);
+    background: linear-gradient(to right, #b8860b, #e0c15a, #b8860b);
+    left: 50%;
+    top: 0;
+    transform: translateX(-50%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.coin.canto .edge-line {
+    opacity: 1;
+}
+
+button {
+    padding: 12px 25px;
+    font-size: 18px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+button:disabled {
+    background: gray;
+    cursor: not-allowed;
+}
+
+#result {
+    margin-top: 25px;
+    font-size: 28px;
+}
