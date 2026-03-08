@@ -9,6 +9,7 @@
     </head>
     <body>
     <div class="container">
+        <h2 id="result"></h2>
         <div class="scene">
             <div id="coin" class="coin">
                 <div class="coin-face coin-front">CARA</div>
@@ -19,11 +20,42 @@
             </div>
         </div>
 
+        <div class="bet-area">
+            <button class="bet-btn" id="betCara" data-side="cara">CARA<span class="bet-action">nos vamos</span></button>
+            <button class="bet-btn bet-canto-btn" id="betCanto">CANTO</button>
+            <button class="bet-btn" id="betCruz" data-side="cruz">CRUZ<span class="bet-action">nos vamos</span></button>
+        </div>
+
         <button id="flipBtn">Lanzar KanchCoin</button>
-        <h2 id="result"></h2>
+
+        <div class="stats">
+            <div class="stat-item">
+                <span class="stat-label">CARA</span>
+                <span class="stat-count" id="countCara">0</span>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat-item">
+                <span class="stat-label">CRUZ</span>
+                <span class="stat-count" id="countCruz">0</span>
+            </div>
+        </div>
     </div>
 
-    <script src="scripts.js"></script>
     <audio id="coinSound" src="coin.mp3"></audio>
+
+    <!-- Botón Reglas -->
+    <button id="rulesBtn" class="rules-btn">ARAM Rules</button>
+
+    <!-- Panel Reglas -->
+    <div id="rulesOverlay" class="rules-overlay">
+        <div class="rules-panel">
+            <button id="rulesClose" class="rules-close">&times;</button>
+            <div id="rulesContent" class="rules-content">Cargando…</div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="reglas.js"></script>
+    <script src="scripts.js"></script>
     </body>
 </html>

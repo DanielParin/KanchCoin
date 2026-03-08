@@ -1,45 +1,120 @@
+// =============================================================
+// REFERENCIAS AL DOM
+// =============================================================
+
 const coin        = document.getElementById("coin");
 const button      = document.getElementById("flipBtn");
 const resultText  = document.getElementById("result");
 const edgeOverlay = document.getElementById("edgeOverlay");
-const edgeBar     = document.querySelector(".edge-bar");
 
-const FULL_SPINS    = 8;
-const TOTAL_DURATION = 5000;
-const CROSSFADE_MS   = 600;
+// Botones de apuesta
+const betCara  = document.getElementById("betCara");
+const betCruz  = document.getElementById("betCruz");
+const betCanto = document.getElementById("betCanto");
 
-let absoluteAngle = 0;
+// Contadores del historial
+const countCara = document.getElementById("countCara");
+const countCruz = document.getElementById("countCruz");
+
+
+// =============================================================
+// CONFIGURACIÓN DE LA ANIMACIÓN
+// =============================================================
+
+const FULL_SPINS     = 8;      // Número de vueltas completas antes de parar
+const TOTAL_DURATION = 5000;   // Duración total del giro en ms
+const CROSSFADE_MS   = 600;    // Duración del crossfade cara→canto en ms
+
+
+// =============================================================
+// ESTADO GLOBAL
+// =============================================================
+
+let absoluteAngle = 0; // Ángulo acumulado para evitar saltos entre lanzamientos
+let tallyCara     = 0; // Contador de veces que ha salido cara
+let tallyCruz     = 0; // Contador de veces que ha salido cruz
+
+
+// =============================================================
+// LÓGICA DE APUESTA
+// =============================================================
+
+/**
+ * Activa la apuesta seleccionada y actualiza el estado visual de los tres botones.
+ * @param {"cara"|"cruz"|"canto"} selected
+ */
+function applyBet(selected) {
+    clearBet();
+    if (selected === "canto") {
+        betCanto.classList.add("bet-canto-active");
+        [betCara, betCruz].forEach(btn => {
+            btn.classList.add("bet-opposite");
+            btn.querySelector(".bet-action").textContent = "nos quedamos";
+        });
+    } else {
+        const selectedBtn = selected === "cara" ? betCara : betCruz;
+        const oppositeBtn = selected === "cara" ? betCruz : betCara;
+        selectedBtn.classList.add("bet-selected");
+        selectedBtn.querySelector(".bet-action").textContent = "nos vamos";
+        oppositeBtn.classList.add("bet-opposite");
+        oppositeBtn.querySelector(".bet-action").textContent = "nos quedamos";
+        betCanto.classList.add("bet-opposite");
+    }
+}
+
+/** Limpia todos los estados de apuesta y restaura los textos por defecto. */
+function clearBet() {
+    [betCara, betCruz].forEach(btn => {
+        btn.classList.remove("bet-selected", "bet-opposite");
+        btn.querySelector(".bet-action").textContent = "nos vamos";
+    });
+    betCanto.classList.remove("bet-canto-active", "bet-opposite");
+}
+
+// Clicks en los botones de apuesta (segundo click deselecciona)
+betCara.addEventListener("click",  () => betCara.classList.contains("bet-selected")      ? clearBet() : applyBet("cara"));
+betCruz.addEventListener("click",  () => betCruz.classList.contains("bet-selected")      ? clearBet() : applyBet("cruz"));
+betCanto.addEventListener("click", () => betCanto.classList.contains("bet-canto-active") ? clearBet() : applyBet("canto"));
+
+
+// =============================================================
+// LANZAMIENTO DE LA MONEDA
+// =============================================================
 
 button.addEventListener("click", () => {
     button.disabled = true;
-    resultText.classList.remove("visible");
+    betCara.disabled = betCruz.disabled = betCanto.disabled = true;
+
+    // Reinicia el resultado visual
+    resultText.classList.remove("visible", "result-vamos", "result-quedamos", "result-canto", "result-canto-rainbow", "result-canto-bad");
     resultText.textContent = "";
 
-    coin.style.visibility  = "visible";
-    coin.style.transform   = "";
-    edgeOverlay.style.opacity = "0";
+    // Reinicia el estado visual de la moneda
+    coin.style.visibility        = "visible";
+    coin.style.transform         = "";
+    edgeOverlay.style.opacity    = "0";
     edgeOverlay.style.transition = "none";
 
+    // Probabilidades: 45% cara | 45% cruz | 10% canto
     const rand = Math.random();
-    let result;
-    if      (rand < 0.45) result = "Cara";
-    else if (rand < 0.90) result = "Cruz";
-    else                  result = "Canto";
-
-    if (result === "Canto") {
-        runCanto();
-    } else {
-        runNormal(result);
-    }
+    if      (rand < 0.45) runNormal("Cara");
+    else if (rand < 0.90) runNormal("Cruz");
+    else                  runCanto();
 });
+
+/**
+ * Animación de giro normal (cara o cruz).
+ * Calcula el ángulo final para que la moneda quede en la cara correcta.
+ */
 
 function runNormal(result) {
     const targetMod  = result === "Cara" ? 0 : 180;
     const currentMod = ((absoluteAngle % 360) + 360) % 360;
     let extra = (targetMod - currentMod + 360) % 360;
-    if (extra === 0) extra = 360;
-    const toAngle   = absoluteAngle + (FULL_SPINS * 360) + extra;
+    if (extra === 0) extra = 360; // Garantiza al menos una vuelta completa
+
     const fromAngle = absoluteAngle;
+    const toAngle   = absoluteAngle + (FULL_SPINS * 360) + extra;
     absoluteAngle   = toAngle;
 
     const anim = coin.animate(
@@ -57,6 +132,10 @@ function runNormal(result) {
     };
 }
 
+/**
+ * Animación de giro para el canto (90°).
+ * Al parar, aplasta la moneda con un crossfade hacia el borde lateral.
+ */
 function runCanto() {
     const currentMod = ((absoluteAngle % 360) + 360) % 360;
     let extra = (90 - currentMod + 360) % 360;
@@ -88,11 +167,9 @@ function runCanto() {
         );
 
         edgeOverlay.style.transition = `opacity ${CROSSFADE_MS}ms ease-in`;
-        requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-                edgeOverlay.style.opacity = "1";
-            });
-        });
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+            edgeOverlay.style.opacity = "1";
+        }));
 
         squeeze.onfinish = () => {
             coin.style.visibility = "hidden";
@@ -102,10 +179,171 @@ function runCanto() {
     };
 }
 
-function showResult(result) {
-    resultText.textContent = result.toUpperCase();
-    requestAnimationFrame(() =>
-        requestAnimationFrame(() => resultText.classList.add("visible"))
-    );
-    button.disabled = false;
+
+// =============================================================
+// EFECTO ÉPICO DEL CANTO
+// =============================================================
+
+/**
+ * Dispara el flash de fondo y las partículas de colores cuando se acierta el canto.
+ */
+function triggerCantoEpic() {
+    // Flash del fondo
+    document.body.classList.remove("canto-flash");
+    void document.body.offsetWidth;
+    document.body.classList.add("canto-flash");
+    setTimeout(() => document.body.classList.remove("canto-flash"), 1000);
+
+    // Explosión de partículas centrada en el texto de resultado
+    const rect = resultText.getBoundingClientRect();
+    const ox = rect.left + rect.width  / 2;
+    const oy = rect.top  + rect.height / 2;
+    const burst = document.createElement("div");
+    burst.className = "canto-burst";
+    burst.style.setProperty("--ox", ox + "px");
+    burst.style.setProperty("--oy", oy + "px");
+    document.body.appendChild(burst);
+
+    const colors = ["#ff5555", "#ff9933", "#ffee33", "#55ff55", "#33bbff", "#bb55ff", "#ffffff", "#ff44cc"];
+    for (let i = 0; i < 60; i++) {
+        const p = document.createElement("div");
+        p.className = "canto-particle";
+        const angle = (i / 60) * 360 + Math.random() * 12;
+        const dist  = 120 + Math.random() * 420;
+        const tx    = Math.cos(angle * Math.PI / 180) * dist;
+        const ty    = Math.sin(angle * Math.PI / 180) * dist;
+        const size  = 4 + Math.random() * 11;
+        const dur   = (0.5 + Math.random() * 0.9).toFixed(2);
+        const delay = (Math.random() * 0.2).toFixed(2);
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        p.style.cssText =
+            `--tx:${tx.toFixed(0)}px; --ty:${ty.toFixed(0)}px; --dur:${dur}s; --delay:${delay}s;` +
+            `width:${size.toFixed(0)}px; height:${size.toFixed(0)}px;` +
+            `background:${color}; box-shadow:0 0 ${(size * 3).toFixed(0)}px ${color}, 0 0 ${(size * 1.2).toFixed(0)}px #fff;`;
+        burst.appendChild(p);
+    }
+    setTimeout(() => burst.remove(), 2600); // Limpia el DOM cuando acaban las partículas
 }
+
+/**
+ * Flash rojo de fondo y partículas oscuras cuando cae canto sin estar seleccionado.
+ */
+function triggerCantoBad() {
+    // Flash rojo del fondo
+    document.body.classList.remove("canto-bad-flash");
+    void document.body.offsetWidth;
+    document.body.classList.add("canto-bad-flash");
+    setTimeout(() => document.body.classList.remove("canto-bad-flash"), 900);
+
+    // Partículas rojas centradas en el texto de resultado
+    const rect = resultText.getBoundingClientRect();
+    const ox = rect.left + rect.width  / 2;
+    const oy = rect.top  + rect.height / 2;
+    const burst = document.createElement("div");
+    burst.className = "canto-burst";
+    burst.style.setProperty("--ox", ox + "px");
+    burst.style.setProperty("--oy", oy + "px");
+    document.body.appendChild(burst);
+
+    const colors = ["#cc0000", "#880000", "#ff2222", "#aa0000", "#ff4444", "#660000", "#ff0000", "#990000"];
+    for (let i = 0; i < 60; i++) {
+        const p = document.createElement("div");
+        p.className = "canto-particle";
+        const angle = (i / 60) * 360 + Math.random() * 12;
+        const dist  = 120 + Math.random() * 420;
+        const tx    = Math.cos(angle * Math.PI / 180) * dist;
+        const ty    = Math.sin(angle * Math.PI / 180) * dist;
+        const size  = 4 + Math.random() * 11;
+        const dur   = (0.5 + Math.random() * 0.9).toFixed(2);
+        const delay = (Math.random() * 0.2).toFixed(2);
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        p.style.cssText =
+            `--tx:${tx.toFixed(0)}px; --ty:${ty.toFixed(0)}px; --dur:${dur}s; --delay:${delay}s;` +
+            `width:${size.toFixed(0)}px; height:${size.toFixed(0)}px;` +
+            `background:${color}; box-shadow:0 0 ${(size * 3).toFixed(0)}px ${color}, 0 0 ${(size * 1.2).toFixed(0)}px #ff8888;`;
+        burst.appendChild(p);
+    }
+    setTimeout(() => burst.remove(), 2000); // Limpia el DOM cuando acaban las partículas
+}
+
+// =============================================================
+// RESULTADO
+// =============================================================
+
+/**
+ * Muestra el resultado en pantalla y actualiza contadores.
+ * Si hay apuesta activa, muestra "NOS VAMOS" / "NOS QUEDAMOS" en lugar del resultado literal.
+ */
+function showResult(result) {
+    resultText.classList.remove("result-vamos", "result-quedamos", "result-canto", "result-canto-rainbow", "result-canto-bad");
+
+    const selectedCara  = betCara.classList.contains("bet-selected");
+    const selectedCruz  = betCruz.classList.contains("bet-selected");
+    const selectedCanto = betCanto.classList.contains("bet-canto-active");
+    const hasBet        = selectedCara || selectedCruz || selectedCanto;
+
+    if (result === "Canto") {
+        if (selectedCanto) {
+            // ¡Acertó el canto! Efecto épico
+            resultText.textContent = "CANTO";
+            resultText.classList.add("result-canto-rainbow");
+            triggerCantoEpic();
+        } else if (hasBet) {
+            // Canto con una apuesta contraria: animación mala roja con parpadeo
+            resultText.textContent = "CANTO";
+            resultText.classList.add("result-canto-bad");
+            triggerCantoBad();
+        } else {
+            // Sin apuesta: resultado neutro dorado, sin efectos especiales
+            resultText.textContent = "CANTO";
+            resultText.classList.add("result-canto");
+        }
+    } else {
+        // Actualiza historial
+        if (result === "Cara") { tallyCara++; countCara.textContent = tallyCara; }
+        if (result === "Cruz") { tallyCruz++; countCruz.textContent = tallyCruz; }
+
+        if (hasBet) {
+            // ¿Coincide el resultado con la apuesta?
+            const betWins = (selectedCara && result === "Cara") || (selectedCruz && result === "Cruz");
+            resultText.textContent = betWins ? "NOS VAMOS" : "NOS QUEDAMOS";
+            resultText.classList.add(betWins ? "result-vamos" : "result-quedamos");
+            // Flash de fondo según resultado
+            const flashClass = betWins ? "result-vamos-flash" : "result-quedamos-flash";
+            document.body.classList.remove("result-vamos-flash", "result-quedamos-flash");
+            void document.body.offsetWidth;
+            document.body.classList.add(flashClass);
+            setTimeout(() => document.body.classList.remove(flashClass), 1200);
+        } else {
+            // Sin apuesta: muestra el resultado literal
+            resultText.textContent = result.toUpperCase();
+            resultText.classList.add("result-vamos");
+        }
+    }
+
+    // Fade-in del resultado (doble rAF para forzar reflow antes de la transición)
+    requestAnimationFrame(() => requestAnimationFrame(() => resultText.classList.add("visible")));
+    button.disabled = false;
+    betCara.disabled = betCruz.disabled = betCanto.disabled = false;
+}
+
+
+// =============================================================
+// PANEL DE REGLAS
+// =============================================================
+
+const rulesBtn     = document.getElementById("rulesBtn");
+const rulesOverlay = document.getElementById("rulesOverlay");
+const rulesClose   = document.getElementById("rulesClose");
+const rulesContent = document.getElementById("rulesContent");
+
+// Renderiza el Markdown de reglas al cargar (contenido en reglas.js)
+rulesContent.innerHTML = marked.parse(REGLAS_MD);
+
+function openRules()  { rulesOverlay.classList.add("open"); }
+function closeRules() { rulesOverlay.classList.remove("open"); }
+
+rulesBtn.addEventListener("click",   openRules);
+rulesClose.addEventListener("click", closeRules);
+rulesOverlay.addEventListener("click", e => { if (e.target === rulesOverlay) closeRules(); }); // Clic fuera cierra
+document.addEventListener("keydown",   e => { if (e.key === "Escape") closeRules(); });        // Escape cierra
