@@ -36,6 +36,84 @@ let tallyCruz     = 0; // Contador de veces que ha salido cruz
 
 
 // =============================================================
+// SISTEMA DE AUDIO
+// =============================================================
+
+/**
+ * Crea un objeto Audio reutilizable con volumen y loop configurables.
+ * @param {string} src      Ruta al fichero de audio
+ * @param {number} volume   Volumen inicial (0–1)
+ * @param {boolean} loop    Si debe reproducirse en bucle
+ */
+function createSound(src, volume = 1, loop = false) {
+    const audio = new Audio(src);
+    audio.volume = volume;
+    audio.loop   = loop;
+    return audio;
+}
+
+const SFX = {
+    ambient:    createSound("Music/ambient.mp3",    0.35, true),   // Música de fondo en bucle
+    flip:       createSound("Music/flip.mp3",       0.8,  false),  // Lanzamiento de la moneda
+    win:        createSound("Music/win.mp3",        0.85, false),  // Cara/Cruz: apuesta ganada
+    lose:       createSound("Music/lose.mp3",       0.85, false),  // Cara/Cruz: apuesta perdida
+    cantoEpic:  createSound("Music/cantoEpic.mp3", 0.85,  false),  // Canto: apuesta acertada
+    cantoBad:   createSound("Music/cantoBad.mp3",  0.85, false),  // Canto: con apuesta contraria
+};
+
+let ambientStarted = false; // ¿Ha arrancado ya la música de fondo?
+let firstFlipDone  = false; // ¿Se ha lanzado ya la primera moneda?
+
+/**
+ * Intenta arrancar la música ambiente en el primer gesto del usuario.
+ * Los navegadores bloquean el autoplay sin interacción previa.
+ */
+function tryStartAmbient() {
+    if (ambientStarted) return;
+    ambientStarted = true;
+    SFX.ambient.play().catch(() => {
+        // Si el navegador bloquea la reproducción, silenciamos sin error visible
+    });
+}
+
+/**
+ * Desvanece gradualmente la música ambiente y la detiene.
+ * @param {number} duration  Duración del fade en ms (por defecto 1500ms)
+ */
+function fadeOutAmbient(duration = 1500) {
+    if (!ambientStarted || SFX.ambient.paused) return;
+    const steps    = 30;
+    const interval = duration / steps;
+    const delta    = SFX.ambient.volume / steps;
+
+    const fade = setInterval(() => {
+        if (SFX.ambient.volume > delta) {
+            SFX.ambient.volume -= delta;
+        } else {
+            SFX.ambient.volume = 0;
+            SFX.ambient.pause();
+            clearInterval(fade);
+        }
+    }, interval);
+}
+
+/**
+ * Reproduce un efecto de sonido desde el inicio,
+ * interrumpiendo cualquier reproducción anterior del mismo clip.
+ * @param {HTMLAudioElement} sfx
+ */
+function playSFX(sfx) {
+    sfx.currentTime = 0;
+    sfx.play().catch(() => {});
+}
+
+// Arranca el ambient en el primer clic sobre cualquier botón interactivo
+[betCara, betCruz, betCanto, button].forEach(btn =>
+    btn.addEventListener("click", tryStartAmbient, { once: false })
+);
+
+
+// =============================================================
 // LÓGICA DE APUESTA
 // =============================================================
 
@@ -85,6 +163,15 @@ button.addEventListener("click", () => {
     button.disabled = true;
     betCara.disabled = betCruz.disabled = betCanto.disabled = true;
 
+    // Desvanece el ambient la primera vez que se lanza
+    if (!firstFlipDone) {
+        firstFlipDone = true;
+        fadeOutAmbient(1800);
+    }
+
+    // Sonido de lanzamiento
+    playSFX(SFX.flip);
+
     // Reinicia el resultado visual
     resultText.classList.remove("visible", "result-vamos", "result-quedamos", "result-canto", "result-canto-rainbow", "result-canto-bad");
     resultText.textContent = "";
@@ -97,8 +184,8 @@ button.addEventListener("click", () => {
 
     // Probabilidades: 45% cara | 45% cruz | 10% canto
     const rand = Math.random();
-    if      (rand < 0.45) runNormal("Cara");
-    else if (rand < 0.90) runNormal("Cruz");
+    if      (rand < 0.1) runNormal("Cara");
+    else if (rand < 0.2) runNormal("Cruz");
     else                  runCanto();
 });
 
@@ -106,12 +193,11 @@ button.addEventListener("click", () => {
  * Animación de giro normal (cara o cruz).
  * Calcula el ángulo final para que la moneda quede en la cara correcta.
  */
-
 function runNormal(result) {
     const targetMod  = result === "Cara" ? 0 : 180;
     const currentMod = ((absoluteAngle % 360) + 360) % 360;
     let extra = (targetMod - currentMod + 360) % 360;
-    if (extra === 0) extra = 360; // Garantiza al menos una vuelta completa
+    if (extra === 0) extra = 360;
 
     const fromAngle = absoluteAngle;
     const toAngle   = absoluteAngle + (FULL_SPINS * 360) + extra;
@@ -188,13 +274,13 @@ function runCanto() {
  * Dispara el flash de fondo y las partículas de colores cuando se acierta el canto.
  */
 function triggerCantoEpic() {
-    // Flash del fondo
+    playSFX(SFX.cantoEpic);
+
     document.body.classList.remove("canto-flash");
     void document.body.offsetWidth;
     document.body.classList.add("canto-flash");
     setTimeout(() => document.body.classList.remove("canto-flash"), 1000);
 
-    // Explosión de partículas centrada en el texto de resultado
     const rect = resultText.getBoundingClientRect();
     const ox = rect.left + rect.width  / 2;
     const oy = rect.top  + rect.height / 2;
@@ -222,20 +308,20 @@ function triggerCantoEpic() {
             `background:${color}; box-shadow:0 0 ${(size * 3).toFixed(0)}px ${color}, 0 0 ${(size * 1.2).toFixed(0)}px #fff;`;
         burst.appendChild(p);
     }
-    setTimeout(() => burst.remove(), 2600); // Limpia el DOM cuando acaban las partículas
+    setTimeout(() => burst.remove(), 2600);
 }
 
 /**
  * Flash rojo de fondo y partículas oscuras cuando cae canto sin estar seleccionado.
  */
 function triggerCantoBad() {
-    // Flash rojo del fondo
+    playSFX(SFX.cantoBad);
+
     document.body.classList.remove("canto-bad-flash");
     void document.body.offsetWidth;
     document.body.classList.add("canto-bad-flash");
     setTimeout(() => document.body.classList.remove("canto-bad-flash"), 900);
 
-    // Partículas rojas centradas en el texto de resultado
     const rect = resultText.getBoundingClientRect();
     const ox = rect.left + rect.width  / 2;
     const oy = rect.top  + rect.height / 2;
@@ -263,16 +349,16 @@ function triggerCantoBad() {
             `background:${color}; box-shadow:0 0 ${(size * 3).toFixed(0)}px ${color}, 0 0 ${(size * 1.2).toFixed(0)}px #ff8888;`;
         burst.appendChild(p);
     }
-    setTimeout(() => burst.remove(), 2000); // Limpia el DOM cuando acaban las partículas
+    setTimeout(() => burst.remove(), 2000);
 }
+
 
 // =============================================================
 // RESULTADO
 // =============================================================
 
 /**
- * Muestra el resultado en pantalla y actualiza contadores.
- * Si hay apuesta activa, muestra "NOS VAMOS" / "NOS QUEDAMOS" en lugar del resultado literal.
+ * Muestra el resultado en pantalla, actualiza contadores y dispara el sonido correcto.
  */
 function showResult(result) {
     resultText.classList.remove("result-vamos", "result-quedamos", "result-canto", "result-canto-rainbow", "result-canto-bad");
@@ -284,17 +370,18 @@ function showResult(result) {
 
     if (result === "Canto") {
         if (selectedCanto) {
-            // ¡Acertó el canto! Efecto épico
+            // ¡Acertó el canto! Efecto épico + sonido épico (ya disparado en triggerCantoEpic)
             resultText.textContent = "CANTO";
             resultText.classList.add("result-canto-rainbow");
             triggerCantoEpic();
         } else if (hasBet) {
-            // Canto con una apuesta contraria: animación mala roja con parpadeo
+            // Canto con apuesta contraria: animación mala + sonido malo (ya disparado en triggerCantoBad)
             resultText.textContent = "CANTO";
             resultText.classList.add("result-canto-bad");
             triggerCantoBad();
         } else {
-            // Sin apuesta: resultado neutro dorado, sin efectos especiales
+            // Sin apuesta: resultado neutro dorado + sonido canto genérico
+            playSFX(SFX.win);
             resultText.textContent = "CANTO";
             resultText.classList.add("result-canto");
         }
@@ -304,24 +391,28 @@ function showResult(result) {
         if (result === "Cruz") { tallyCruz++; countCruz.textContent = tallyCruz; }
 
         if (hasBet) {
-            // ¿Coincide el resultado con la apuesta?
             const betWins = (selectedCara && result === "Cara") || (selectedCruz && result === "Cruz");
+
+            // Sonido de victoria o derrota
+            playSFX(betWins ? SFX.win : SFX.lose);
+
             resultText.textContent = betWins ? "NOS VAMOS" : "NOS QUEDAMOS";
             resultText.classList.add(betWins ? "result-vamos" : "result-quedamos");
-            // Flash de fondo según resultado
+
             const flashClass = betWins ? "result-vamos-flash" : "result-quedamos-flash";
             document.body.classList.remove("result-vamos-flash", "result-quedamos-flash");
             void document.body.offsetWidth;
             document.body.classList.add(flashClass);
             setTimeout(() => document.body.classList.remove(flashClass), 1200);
         } else {
-            // Sin apuesta: muestra el resultado literal
+            // Sin apuesta: muestra el resultado literal (sin sonido especial, el flip ya sonó)
             resultText.textContent = result.toUpperCase();
             resultText.classList.add("result-vamos");
+            playSFX(SFX.win)
         }
     }
 
-    // Fade-in del resultado (doble rAF para forzar reflow antes de la transición)
+    // Fade-in del resultado
     requestAnimationFrame(() => requestAnimationFrame(() => resultText.classList.add("visible")));
     button.disabled = false;
     betCara.disabled = betCruz.disabled = betCanto.disabled = false;
@@ -337,7 +428,6 @@ const rulesOverlay = document.getElementById("rulesOverlay");
 const rulesClose   = document.getElementById("rulesClose");
 const rulesContent = document.getElementById("rulesContent");
 
-// Renderiza el Markdown de reglas al cargar (contenido en reglas.js)
 rulesContent.innerHTML = marked.parse(REGLAS_MD);
 
 function openRules()  { rulesOverlay.classList.add("open"); }
@@ -345,5 +435,5 @@ function closeRules() { rulesOverlay.classList.remove("open"); }
 
 rulesBtn.addEventListener("click",   openRules);
 rulesClose.addEventListener("click", closeRules);
-rulesOverlay.addEventListener("click", e => { if (e.target === rulesOverlay) closeRules(); }); // Clic fuera cierra
-document.addEventListener("keydown",   e => { if (e.key === "Escape") closeRules(); });        // Escape cierra
+rulesOverlay.addEventListener("click", e => { if (e.target === rulesOverlay) closeRules(); });
+document.addEventListener("keydown",   e => { if (e.key === "Escape") closeRules(); });
