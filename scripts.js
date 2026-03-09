@@ -184,8 +184,8 @@ button.addEventListener("click", () => {
 
     // Probabilidades: 45% cara | 45% cruz | 10% canto
     const rand = Math.random();
-    if      (rand < 0.1) runNormal("Cara");
-    else if (rand < 0.2) runNormal("Cruz");
+    if      (rand <= 0.45) runNormal("Cara");
+    else if (rand <= 0.90) runNormal("Cruz");
     else                  runCanto();
 });
 
